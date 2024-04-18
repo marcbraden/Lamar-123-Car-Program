@@ -1,13 +1,17 @@
 /*
-  AnalogReadSerial
-
-  Reads an analog input on pin 0, prints the result to the Serial Monitor.
-  Graphical representation is available using Serial Plotter (Tools > Serial Plotter menu).
-  Attach the center pin of a potentiometer to pin A0, and the outside pins to +5V and ground.
-
-  This example code is in the public domain.
-
-  http://www.arduino.cc/en/Tutorial/AnalogReadSerial
+  Goals - characterize a 12V Greenpower battery.  
+             *How much charge (Coulombs, amp hours) can it pump through before it dies?
+             *How long would it last in a race?
+             *How does its performance change with time?
+             *How can we know its state (%?) at any point during a race?
+             *Know when to retire a battery.
+  Apparatus:
+  Current is measured with a series hall effect current sensor** with output1 to A0 (and output2 to A1 if available), and battery voltage measured across one of
+  3 5k resistors in series.
+  **The current sensor on the car (ACS758-ECB-050B is the one on the car) is mounted to a circuit board and includes some buffer circuitry,
+  providing two outputs rather than just one.  It was calibrated in class and found to have a coefficient of 0.332 amps per unit (out of 1023).
+  This value is inconsistent with the datasheet, but many users have found inconsistencies.
+  The current sensor ACS770-ECB-200U is available for use as a dedicated battery tester.
 */
 
 // the setup routine runs once when you press reset:
@@ -19,7 +23,7 @@ void setup() {
 
 // the loop routine runs over and over again forever:
 void loop() {
-  // read the input on analog pin 0:
+  // read the analog inputs:
   int current1 = analogRead(A0);
   int current2 = analogRead(A1);
   int voltage = analogRead(A2);
@@ -27,6 +31,8 @@ void loop() {
   Serial.print(current1*0.322-166);
   Serial.print(", ");
   Serial.print(current2*0.322-166);
+  Serial.print(", ");
+  Serial.print(voltage);
   Serial.print(", ");
   Serial.println(voltage/1023*5*3);
   delay(100);        // delay in between reads for stability
