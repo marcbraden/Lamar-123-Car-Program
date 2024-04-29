@@ -41,6 +41,9 @@ void setup() {
 }
 
 void loop() {
+if ((millis()-oldTime)>1000){
+       velocity=0
+}
   delay(1000);
   lcd.setCursor(4,0);
   lcd.print(velocity);
