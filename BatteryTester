@@ -1,10 +1,16 @@
 /*
+  Battery Discharge Analyzer, by Valeria Garcia,  Leslie Cortez,  Marc Braden
+  
   Goals - characterize a 12V Greenpower battery.  
              *How much charge (Coulombs, amp hours) can it pump through before it dies?
              *How long would it last in a race?
              *How does its performance change with time?
              *How can we know its state (%?) at any point during a race?
              *Know when to retire a battery.
+
+  Currently - Logs time, voltage, and current regularly to an SD card for a 12 V battery discharging at around 24 amps through 0.5 ohms.  The relay switch is closed as long
+  as the voltage stays above a set minimum to reduce damage to the battery.
+  
   Apparatus:
   Current is measured with a series hall effect current sensor** with output1 to A0 (and output2 to A1 if available), and battery voltage measured across one of
   3 5k resistors in series.
@@ -13,27 +19,98 @@
   This value is inconsistent with the datasheet, but many users have found inconsistencies.
   The current sensor ACS770-ECB-200U is available for use as a dedicated battery tester.
 */
+#include <SPI.h>
+#include <SD.h>
+#include "RTClib.h"
 
-// the setup routine runs once when you press reset:
+RTC_DS1307 rtc;
+
+float voltage=0;
+float current=0;
+const int chipSelect = 10;
+
 void setup() {
-  // initialize serial communication at 9600 bits per second:
+  // Open serial communications and wait for port to open:
   Serial.begin(9600);
+  rtc.begin();
+  pinMode(7, OUTPUT);
+  while (!Serial) {
+    ; // wait for serial port to connect. Needed for native USB port only
+  }
+  Serial.print("Initializing SD card...");
+  // see if the card is present and can be initialized:
+  if (!SD.begin(chipSelect)) {
+    Serial.println("Card failed, or not present");
+    // don't do anything more:
+    while (1);
+  }
+  
+  Serial.println("card initialized.");
+  delay(1000);
 
+  DateTime now = rtc.now();
+  String dataString = "";
+  dataString+=now.year();
+  dataString+=now.month();
+  Serial.println(dataString);
+  Serial.println("That's the date!");
+  File dataFile = SD.open("datalog.txt", FILE_WRITE);
+  // if the file is available, write to it:
+  if (dataFile) {
+    dataFile.println(dataString);
+    dataFile.close();
+    // print to the serial port too:
+  }
+  delay(1000);
+    
 }
 
 // the loop routine runs over and over again forever:
 void loop() {
   // read the analog inputs:
-  int current1 = analogRead(A0);
-  int current2 = analogRead(A1);
-  int voltage = analogRead(A2);
+  int rawCurrent = analogRead(A0);
+  current=float(rawCurrent)*0.322-166;
+  int rawVoltage = analogRead(A2);
+  voltage=float(rawVoltage)/1023.0*5.0*3.0;
   // print out the value you read:
-  Serial.print(current1*0.322-166);
+  Serial.print(current);
   Serial.print(", ");
-  Serial.print(current2*0.322-166);
+  Serial.print(rawVoltage);
   Serial.print(", ");
-  Serial.print(voltage);
-  Serial.print(", ");
-  Serial.println(voltage/1023*5*3);
-  delay(100);        // delay in between reads for stability
+  Serial.println(voltage);
+
+  if (voltage>10.5){
+    digitalWrite(7,HIGH);
+    
+  }
+  else {
+  digitalWrite(7,LOW);
+  }
+  String dataString = "";
+  DateTime now = rtc.now();
+  dataString+=now.unixtime();
+  dataString+=", ";
+  dataString += voltage;
+  dataString += ", ";
+  dataString += current;
+
+  
+  // open the file. note that only one file can be open at a time,
+  // so you have to close this one before opening another.
+  File dataFile = SD.open("datalog.txt", FILE_WRITE);
+
+  // if the file is available, write to it:
+  if (dataFile) {
+    dataFile.println(dataString);
+    dataFile.close();
+    // print to the serial port too:
+  }
+  // if the file isn't open, pop up an error:
+  else {
+    Serial.println("error opening datalog.txt");
+  }
+
+ 
+  delay(1000);        // delay in between reads for stability
+  
 }
